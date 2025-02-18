@@ -311,8 +311,17 @@ function sortCitiesArray(arr) {
  *    "Poland" => ["Lodz"]
  *   }
  */
-function group(/* array, keySelector, valueSelector */) {
-  throw new Error('Not implemented');
+function group(array, keySelector, valueSelector) {
+  const map = new Map();
+  array.forEach((item) => {
+    const key = keySelector(item);
+    const value = valueSelector(item);
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key).push(value);
+  });
+  return map;
 }
 
 /**
@@ -370,32 +379,78 @@ function group(/* array, keySelector, valueSelector */) {
  */
 
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  parts: [],
+  orderRules: {
+    element: 0,
+    id: 1,
+    class: 2,
+    attr: 3,
+    pseudoClass: 4,
+    pseudoElement: 5,
   },
 
-  id(/* value */) {
-    throw new Error('Not implemented');
+  element(value) {
+    return this.addSelector('element', value);
   },
 
-  class(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    return this.addSelector('id', `#${value}`);
   },
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    return this.addSelector('class', `.${value}`);
   },
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    return this.addSelector('attr', `[${value}]`);
   },
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    return this.addSelector('pseudoClass', `:${value}`);
   },
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    return this.addSelector('pseudoElement', `::${value}`);
+  },
+
+  addSelector(type, value) {
+    this.validateOrder(type);
+    this.validateUnique(type, value);
+    const instance = Object.create(this);
+    instance.parts = [...this.parts, { type, value }];
+    return instance;
+  },
+
+  validateOrder(newType) {
+    const lastPart = this.parts[this.parts.length - 1];
+    if (lastPart && this.orderRules[lastPart.type] > this.orderRules[newType]) {
+      throw new Error(
+        'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element'
+      );
+    }
+  },
+
+  validateUnique(type) {
+    if (
+      ['element', 'id', 'pseudoElement'].includes(type) &&
+      this.parts.some((part) => part.type === type)
+    ) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector'
+      );
+    }
+  },
+
+  combine(selector1, combinator, selector2) {
+    return {
+      stringify: () => {
+        return `${selector1.stringify()} ${combinator} ${selector2.stringify()}`;
+      },
+    };
+  },
+
+  stringify() {
+    return this.parts.map((part) => part.value).join('');
   },
 };
 
